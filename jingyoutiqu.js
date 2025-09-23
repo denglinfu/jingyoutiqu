@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         菁优题目提取器终极版（含上下标+分数拼接+表格+美化）
+// @name         菁优题目提取器终极版（含上下标+分数拼接+通用表格+美化）
 // @namespace    http://tampermonkey.net/
-// @version      5.2
-// @description  提取 pt1、pt2、pt6、pt11 区块内容，保留公式与结构，支持上下标、分数拼接、表格，弹窗显示并复制，美化按钮和弹窗
+// @version      5.3
+// @description  提取 pt1、pt2、pt6、pt11 区块内容，保留公式与结构，支持上下标、分数拼接、所有表格，弹窗显示并复制，美化按钮和弹窗
 // @match        *://www.jyeoo.com/*
 // @grant        GM_setClipboard
 // ==/UserScript==
@@ -107,7 +107,7 @@
         return latex;
     }
 
-    // 表格提取
+    // 表格提取（通用）
     function extractTable(table) {
         let result = '';
         const rows = table.querySelectorAll('tr');
@@ -123,7 +123,7 @@
         return result;
     }
 
-    // 提取题干/解答/答案（支持表格）
+    // 提取题干/解答/答案（支持所有表格）
     function extractContent(block, label) {
         let result = `【${label}】\n`;
         let line = '';
@@ -133,7 +133,7 @@
                 if (node.tagName === 'BR') {
                     result += line.trim() + '\n';
                     line = '';
-                } else if (node.classList.contains('edittable')) {
+                } else if (node.tagName === 'TABLE') {
                     result += extractTable(node);
                 } else {
                     line += parseMathNode(node);
