@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         菁优题目提取器终极版（含上下标+分数拼接+美化）
+// @name         菁优题目提取器终极版（含上下标+分数拼接+表格+美化）
 // @namespace    http://tampermonkey.net/
-// @version      5.1
-// @description  提取 pt1、pt2、pt6、pt11 区块内容，保留公式与结构，支持上下标与分数拼接，弹窗显示并复制，美化按钮和弹窗
+// @version      5.2
+// @description  提取 pt1、pt2、pt6、pt11 区块内容，保留公式与结构，支持上下标、分数拼接、表格，弹窗显示并复制，美化按钮和弹窗
 // @match        *://www.jyeoo.com/*
 // @grant        GM_setClipboard
 // ==/UserScript==
@@ -27,6 +27,7 @@
     btn.style.cursor = 'pointer';
     btn.style.fontSize = '14px';
 
+    // 递归解析节点为 LaTeX
     function parseMathNode(node) {
         let latex = '';
         if (!node) return latex;
@@ -39,6 +40,7 @@
         if (node.nodeType === Node.ELEMENT_NODE) {
             const cls = node.classList;
 
+            // 分数
             if (cls.contains('mfrac')) {
                 const zi = node.querySelector('.fracZi');
                 const mu = node.querySelector('.fracMu');
@@ -49,6 +51,7 @@
                 return latex;
             }
 
+            // 上下标结构（msubsup）
             if (cls.contains('msubsup')) {
                 const base = node.querySelector('.msubsupCont');
                 const sub = node.querySelector('.msub');
@@ -63,13 +66,13 @@
                 return latex;
             }
 
+            // 标准上下标
             if (node.tagName === 'SUP') {
                 let sup = '';
                 node.childNodes.forEach(child => sup += parseMathNode(child));
                 latex += `^{${sup}}`;
                 return latex;
             }
-
             if (node.tagName === 'SUB') {
                 let sub = '';
                 node.childNodes.forEach(child => sub += parseMathNode(child));
@@ -77,22 +80,26 @@
                 return latex;
             }
 
+            // 普通数学符号
             if (cls.contains('math-letter') || cls.contains('mo')) {
                 latex += node.textContent.trim();
                 return latex;
             }
 
+            // mrow 组
             if (cls.contains('mrow')) {
                 node.childNodes.forEach(child => latex += parseMathNode(child));
                 return latex;
             }
 
+            // MathJye 容器
             if (cls.contains('MathJye')) {
                 const mrow = node.querySelector('.mrow');
                 if (mrow) latex += parseMathNode(mrow);
                 return latex;
             }
 
+            // 其他元素递归
             node.childNodes.forEach(child => latex += parseMathNode(child));
             return latex;
         }
@@ -100,6 +107,23 @@
         return latex;
     }
 
+    // 表格提取
+    function extractTable(table) {
+        let result = '';
+        const rows = table.querySelectorAll('tr');
+        rows.forEach(tr => {
+            let line = '';
+            const cells = tr.querySelectorAll('td');
+            cells.forEach((td, i) => {
+                line += parseMathNode(td).trim();
+                if (i < cells.length - 1) line += ' ';
+            });
+            result += line.trim() + '\n';
+        });
+        return result;
+    }
+
+    // 提取题干/解答/答案（支持表格）
     function extractContent(block, label) {
         let result = `【${label}】\n`;
         let line = '';
@@ -109,6 +133,8 @@
                 if (node.tagName === 'BR') {
                     result += line.trim() + '\n';
                     line = '';
+                } else if (node.classList.contains('edittable')) {
+                    result += extractTable(node);
                 } else {
                     line += parseMathNode(node);
                 }
@@ -121,6 +147,7 @@
         return result.trim();
     }
 
+    // 提取选项
     function extractOptions(block) {
         let result = '【选项】\n';
         const labels = block.querySelectorAll('.selectoption label');
