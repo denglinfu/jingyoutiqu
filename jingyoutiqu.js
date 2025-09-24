@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         菁优题目提取器终极版（含上下标+分数拼接+通用表格+美化）
+// @name         菁优题目提取器终极版（含上下标+分数拼接+通用表格+顺序调整+美化）
 // @namespace    http://tampermonkey.net/
-// @version      5.3
-// @description  提取 pt1、pt2、pt6、pt11 区块内容，保留公式与结构，支持上下标、分数拼接、所有表格，弹窗显示并复制，美化按钮和弹窗
+// @version      6.0
+// @description  提取 pt1、pt2、pt6、pt11 区块内容，保留公式与结构，支持上下标、分数拼接、所有表格，输出顺序调整为题干-选项-答案-解答，弹窗显示并复制，美化按钮和弹窗
 // @match        *://www.jyeoo.com/*
 // @grant        GM_setClipboard
 // ==/UserScript==
@@ -11,12 +11,12 @@
     'use strict';
 
     const btn = document.createElement('button');
-    btn.textContent = '提取题干/选项/解答/答案';
+    btn.textContent = '提取题干/选项/答案/解答';
     btn.style.position = 'fixed';
     btn.style.top = '20px';
     btn.style.right = '20px';
     btn.style.zIndex = '9999';
-    btn.style.width = '180px';
+    btn.style.width = '200px';
     btn.style.height = '40px';
     btn.style.display = 'flex';
     btn.style.alignItems = 'center';
@@ -107,7 +107,7 @@
         return latex;
     }
 
-    // 表格提取（通用）
+    // 表格提取（所有表格，单元格用 & 分隔）
     function extractTable(table) {
         let result = '';
         const rows = table.querySelectorAll('tr');
@@ -116,7 +116,7 @@
             const cells = tr.querySelectorAll('td');
             cells.forEach((td, i) => {
                 line += parseMathNode(td).trim();
-                if (i < cells.length - 1) line += ' ';
+                if (i < cells.length - 1) line += '&';  // 用 & 分隔
             });
             result += line.trim() + '\n';
         });
@@ -166,13 +166,14 @@
         const pt11 = document.querySelector('.pt11');
 
         let output = '';
+        // 顺序调整：题干 → 选项 → 答案 → 解答
         if (pt1) output += extractContent(pt1, '题干') + '\n\n';
         if (pt2) output += extractOptions(pt2) + '\n\n';
-        if (pt6) output += extractContent(pt6, '解答') + '\n\n';
         if (pt11) output += extractContent(pt11, '答案') + '\n\n';
+        if (pt6) output += extractContent(pt6, '解答') + '\n\n';
 
         if (!output.trim()) {
-            alert('未找到题干、选项、解答或答案内容');
+            alert('未找到题干、选项、答案或解答内容');
             return;
         }
 
